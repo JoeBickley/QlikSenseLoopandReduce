@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Express 2012 for Windows Desktop
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QlikSenseLoopandReduce", "QlikSenseLoopandReduce.csproj", "{AE1A1317-919F-4C94-AA55-0C2AD9E38853}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QlikSenseLoopandReduce", "QlikSenseLoopandReduce\QlikSenseLoopandReduce.csproj", "{AE1A1317-919F-4C94-AA55-0C2AD9E38853}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

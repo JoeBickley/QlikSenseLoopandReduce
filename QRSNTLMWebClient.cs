@@ -5,91 +5,86 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Security.Principal;
+using RestSharp;
 
 namespace QlikSenseLoopandReduce
 {
     public class QRSNTLMWebClient
     {
-        private readonly CookierAwareWebClient _client;
-        private readonly NameValueCollection _queryStringCollection;
-        private string serverURL;
+        private readonly RestClient _client;
+
+        RestRequest request;
+        public CookieContainer QRSCookieContainer = new CookieContainer();
 
         public QRSNTLMWebClient(string QRSserverURL)
         {
-            _client = new CookierAwareWebClient { Encoding = Encoding.UTF8 };
-            _client.UseDefaultCredentials = true;
-          
-            _queryStringCollection = new NameValueCollection { { "xrfkey", "ABCDEFG123456789" } };
-            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
-            serverURL = QRSserverURL;
+            _client = new RestClient(QRSserverURL);
+            _client.UserAgent = "Windows";
+            _client.CookieContainer = QRSCookieContainer;
 
-            //do a simple first GET to set cookies for subsequent actions (otherwise POST commands wont work)
-            try
-            {
-                string resp = Get("/qrs/about");
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Couldnt connect to the server at " + QRSserverURL + " , check that the Proxy and QRS are running.");
-            }
+            Get("/qrs/about");
         }
 
 
-
-        public string Put(string endpoint, string content)
+        public string Get(string url)
         {
-            SetHeaders();
-            NameValueCollection queryStringCollection = new NameValueCollection(_queryStringCollection);
-
-            _client.QueryString = queryStringCollection;
-
-            try
-            {
-                return _client.UploadString(serverURL + endpoint, "Put", content);
-            }
-            catch (WebException ex)
-            {
-                throw new Exception(ParseWebException(ex));
-            }
+            return Get(url, null);
         }
 
-        public string Put(string endpoint, Dictionary<string, string> queries)
+        public string Get(string endpoint, Dictionary<string, string> queries)
         {
-            SetHeaders();
-            NameValueCollection queryStringCollection = new NameValueCollection(_queryStringCollection);
+            SetupRequest(endpoint, Method.GET);
 
             if (queries != null)
             {
                 foreach (KeyValuePair<string, string> query in queries)
-                    queryStringCollection.Add(query.Key, query.Value);
+                    request.AddParameter(query.Key, query.Value, ParameterType.QueryString);
             }
 
-            _client.QueryString = queryStringCollection;
+            IRestResponse response = _client.Execute(request);
+            var responsecontent = response.Content;
+            return responsecontent;
 
-            try
-            {
-                return _client.UploadString(serverURL + endpoint, "Put", "");
-            }
-            catch (WebException ex)
-            {
-                throw new Exception(ParseWebException(ex));
-            }
         }
 
+        public string Put(string endpoint, string content)
+        {
+
+            SetupRequest(endpoint, Method.PUT);
+
+            IRestResponse response = _client.Execute(request);
+            var responsecontent = response.Content;
+            return responsecontent;
+
+        }
+
+        public string Put(string endpoint, Dictionary<string, string> queries)
+        {
+
+            SetupRequest(endpoint, Method.PUT);
+
+            if (queries != null)
+            {
+                foreach (KeyValuePair<string, string> query in queries)
+                    request.AddParameter(query.Key, query.Value, ParameterType.QueryString);
+            }
+
+            IRestResponse response = _client.Execute(request);
+            var responsecontent = response.Content; 
+            return responsecontent;
+
+        }
 
         public byte[] PutFile(string endpoint, string filepath)
         {
-            SetHeaders();
-            _client.QueryString = _queryStringCollection;
+            SetupRequest(endpoint, Method.GET);
 
-            try
-            {
-                return _client.UploadFile(serverURL + endpoint, "Put", filepath);
-            }
-            catch (WebException ex)
-            {
-                throw new Exception(ParseWebException(ex));
-            }
+            request.AddFile("app", filepath);
+
+            IRestResponse response = _client.Execute(request);
+            var responsecontent = response.RawBytes;
+            return responsecontent;
+
         }
 
         public string Post(string endpoint, string content)
@@ -99,159 +94,67 @@ namespace QlikSenseLoopandReduce
 
         public string Post(string endpoint, string content, Dictionary<string, string> queries)
         {
-            SetHeaders();
-
-            NameValueCollection queryStringCollection = new NameValueCollection(_queryStringCollection);
+            SetupRequest(endpoint, Method.POST);
 
             if (queries != null)
             {
                 foreach (KeyValuePair<string, string> query in queries)
-                    queryStringCollection.Add(query.Key, query.Value);
+                request.AddParameter(query.Key, query.Value, ParameterType.QueryString);
             }
 
-            _client.QueryString = queryStringCollection;
+            request.AddParameter("application/json", content, ParameterType.RequestBody);
 
-            try
-            {
-                return _client.UploadString(serverURL + endpoint, "Post", content);
-            }
-            catch (WebException ex)
-            {
-                throw new Exception(ParseWebException(ex));
-            }
+            IRestResponse response = _client.Execute(request);
+            var responsecontent = response.Content;
+            return responsecontent;
         }
 
         public string PostFile(string endpoint, string filepath, Dictionary<string, string> queries)
         {
-            SetHeaders();
-
-            NameValueCollection queryStringCollection = new NameValueCollection(_queryStringCollection);
+            SetupRequest(endpoint, Method.POST);
 
             if (queries != null)
             {
                 foreach (KeyValuePair<string, string> query in queries)
-                    queryStringCollection.Add(query.Key, query.Value);
+                    request.AddParameter(query.Key, query.Value, ParameterType.QueryString);
             }
-            _client.QueryString = queryStringCollection;
 
-            try
-            {
-                byte[] result = _client.UploadFile(serverURL + endpoint, "Post", filepath);
-                return Encoding.UTF8.GetString(result, 0, result.Length);
-            }
-            catch (WebException ex)
-            {
-                throw new Exception(ParseWebException(ex));
-            }
+            request.AddFile("app", filepath);
+
+            IRestResponse response = _client.Execute(request);
+            var responsecontent = response.RawBytes;
+            return Encoding.UTF8.GetString(responsecontent, 0, responsecontent.Length);
+
+
         }
 
         public string Delete(string endpoint)
         {
-            SetHeaders();
-            _client.QueryString = _queryStringCollection;
+            SetupRequest(endpoint, Method.DELETE);
 
-            try
-            {
-                return _client.UploadString(serverURL + endpoint, "Delete", string.Empty);
-            }
-            catch (WebException ex)
-            {
-                throw new Exception(ParseWebException(ex));
-            }
-        }
-
-        public string Get(string url)
-        {
-            return Get(url, null);
-        }
-
-
-
-        public string Get(string endpoint, Dictionary<string, string> queries)
-        {
-            SetHeaders();
-            NameValueCollection queryStringCollection = new NameValueCollection(_queryStringCollection);
-            if (queries != null)
-            {
-                foreach (KeyValuePair<string, string> query in queries)
-                    queryStringCollection.Add(query.Key, query.Value);
-            }
-            _client.QueryString = queryStringCollection;
-
-            try
-            {
-                string response = _client.DownloadString(serverURL + endpoint);
-                return response;
-            }
-            catch (WebException ex)
-            {
-                throw new Exception(ParseWebException(ex));
-            }
-        }
-
-        public void GetFile(string endpoint, string filepath)
-        {
-            SetHeaders();
-
-            NameValueCollection queryStringCollection = new NameValueCollection(_queryStringCollection);
-
-            _client.QueryString = queryStringCollection;
-
-            try
-            {
-                _client.DownloadFile(serverURL + endpoint, filepath);
-                return;
-            }
-            catch (WebException ex)
-            {
-                throw new Exception(ParseWebException(ex));
-            }
-        }
-
-
-
-        private void SetHeaders()
-        {
-            _client.Headers.Clear();
-            _client.Headers.Add("Accept-Charset", "utf-8");
-            _client.Headers.Add("Accept", "application/json");
-            _client.Headers.Add("Content-Type", "application/json");
-            _client.Headers.Add("X-Qlik-xrfkey", "ABCDEFG123456789");
-
+            IRestResponse response = _client.Execute(request);
+            var responsecontent = response.Content;
+            return responsecontent;
         }
 
 
 
 
-        private static string ParseWebException(WebException exception)
+        private void SetupRequest(string endpoint, Method method)
         {
-            if (exception.Status == WebExceptionStatus.ConnectFailure)
-                return exception.Status + ": " + exception.Message;
+            request = new RestRequest(endpoint, method);
+            request.AddParameter("xrfkey", "ABCDEFG123456789",ParameterType.QueryString); 
+            request.AddHeader("Accept-Charset", "utf-8");
+            request.AddHeader("Accept", "application/json");
+            request.AddHeader("Content-Type", "application/json");
+            request.AddHeader("X-Qlik-xrfkey", "ABCDEFG123456789");
+            request.UseDefaultCredentials = true;
+            request.RequestFormat = DataFormat.Json;
 
-            HttpWebResponse webResponse = (HttpWebResponse)exception.Response;
-            Stream responseStream = webResponse.GetResponseStream();
-            return webResponse.StatusDescription + (responseStream != null ? ": " + new StreamReader(responseStream).ReadToEnd() : string.Empty);
-        }
-    }
-
-
-    public class CookierAwareWebClient : WebClient
-    {
-
-        public CookieContainer QRSCookieContainer = new CookieContainer();
-
-        protected override WebRequest GetWebRequest(Uri address)
-        {
-            HttpWebRequest request = (HttpWebRequest)base.GetWebRequest(address);
-            request.CookieContainer = QRSCookieContainer;
-            request.UserAgent = "Windows";
-
-            return request;
         }
 
 
     }
-
 
 }
 

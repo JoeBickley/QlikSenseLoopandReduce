@@ -4,7 +4,7 @@ Draft project to implement a QlikView 11 style Loop and Reduce into Qlik Sense.
 
 The code does this...
 
-1. Lets you pick and app,  the field in the app you want to loop on, and the stream you want to publish too
+1. Lets you pick an app,  the field in the app you want to loop on, and the stream you want to publish too
 2. Copies the root app
 3. Modifies each apps script to insert a variable, this can be used in the script to reduce data on reload
 4. Creates a task and reloads the data

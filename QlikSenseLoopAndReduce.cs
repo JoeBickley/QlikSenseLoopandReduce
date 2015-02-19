@@ -22,7 +22,7 @@ namespace QlikSenseLoopandReduce
             qs = new QlikSenseJSONHelper(url);
         }
 
-        public bool LoopAndReduce(QlikSenseApp sourceapp, QlikSenseStream stream, string script, List<string> LoopValues)
+        public bool LoopAndReduce(app sourceapp, stream stream, string script, List<string> LoopValues)
         {
 
             //create as custom property with the values        
@@ -38,12 +38,12 @@ namespace QlikSenseLoopandReduce
                 newapp.newappname = sourceapp.name + "_" + LoopValues[i];
 
                 //first see if this app exists and get its info
-                QlikSenseApp target = qs.GetApp(newapp.newappname);
+                app target = qs.GetApp(newapp.newappname);
                 if(target != null) 
-                    newapp.oldappid = target.id;
+                    newapp.oldappid = target.ID;
                 
                 //now copy
-                newapp.newappid = qs.CopyAndModifyApp(sourceapp.id, newapp.newappname, LoopProperty, LoopValues[i], script);
+                newapp.newappid = qs.CopyAndModifyApp(sourceapp.ID, newapp.newappname, LoopProperty, LoopValues[i], script);
 
                 //keep it for later
                 newapps.Add(newapp);
@@ -69,24 +69,27 @@ namespace QlikSenseLoopandReduce
             // loop through each app, and wait on each loop until the reload completes checking every 3 seconds
             foreach (Newapp newapp in newapps)
             {
-                //temporary code for handling a bug with blank start response for tasks
-                if (newapp.executionid == "00000000-0000-0000-0000-000000000000")
+                int appreloadstatus = qs.checkprogress(newapp.executionid);
+                int reloadtimeout = 15;
+                int statuscheckcount = 0;
+
+                while (appreloadstatus != 7 && statuscheckcount < reloadtimeout)
                 {
-                    //just wait a few seconds then assume its ok
                     Thread.Sleep(3000);
+                    appreloadstatus = qs.checkprogress(newapp.executionid);
+                    statuscheckcount += 1;
+                }  
+             
+                if(appreloadstatus==7)
+                {
+                    newapp.reloadok = true;
                 }
                 else
                 {
-                    //proper code should check the execution worked ok, if not wait 3 seconds and try again
-                    while (!qs.checkprogress(newapp.executionid))
-                    {
-                        Thread.Sleep(3000);
-                    } 
+                    newapp.reloadok = false;
                 }
-                               
-                //once the code gets here all tasks have completed
-            }                    
-            
+            }
+            //once the code gets here all tasks have completed
 
             //PHASE 3:   Publish the apps (or replace if they exist
 
@@ -102,7 +105,7 @@ namespace QlikSenseLoopandReduce
                 else
                 {
                     //if the app is not already published then publish it
-                    qs.Publish(newapp.newappid, stream.id);
+                    qs.Publish(newapp.newappid, stream.ID);
                 }
             }
 
@@ -110,5 +113,15 @@ namespace QlikSenseLoopandReduce
             return true;
         }
 
+    }
+
+    public class Newapp
+    {
+        public string newappid { get; set; }
+        public string newappname { get; set; }
+        public string oldappid { get; set; }
+        public string taskid { get; set; }
+        public string executionid { get; set; }
+        public bool reloadok { get; set; }
     }
 }

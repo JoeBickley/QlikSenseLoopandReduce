@@ -30,11 +30,11 @@ namespace QlikSenseLoopandReduce
         private void button1_Click(object sender, EventArgs e)
         {
             QlikSenseJSONHelper helper = new QlikSenseJSONHelper(txtServer.Text);
-            List<string> LoopValues = helper.GetFieldValues((QlikSenseApp)cmbApps.SelectedItem, (IAppField)cmbLoopField.SelectedItem);
+            List<string> LoopValues = helper.GetFieldValues((app)cmbApps.SelectedItem, (IAppField)cmbLoopField.SelectedItem);
 
 
             loop = new QlikSenseLoopAndReduce(txtServer.Text);
-            loop.LoopAndReduce(((QlikSenseApp)cmbApps.SelectedItem), ((QlikSenseStream)cmbStreams.SelectedItem), txtScript.Text, LoopValues);
+            loop.LoopAndReduce(((app)cmbApps.SelectedItem), ((stream)cmbStreams.SelectedItem), txtScript.Text, LoopValues);
 
             txtMessageBox.Text = "Loop and reduce process completed.";
             
@@ -49,11 +49,12 @@ namespace QlikSenseLoopandReduce
 
         private void readApps()
         {
-            QRSWebClient qrsClient = new QRSWebClient(txtServer.Text + ":4242");
+            //QRSWebClient qrsClient = new QRSWebClient(txtServer.Text + ":4242");
+            QRSNTLMWebClient qrsClient = new QRSNTLMWebClient(txtServer.Text);
             string result = qrsClient.Get("/qrs/app");
 
-            List<QlikSenseApp> apps = new List<QlikSenseApp>();
-            apps = JsonConvert.DeserializeObject<List<QlikSenseApp>>(result);
+            List<app> apps = new List<app>();
+            apps = JsonConvert.DeserializeObject<List<app>>(result);
 
             cmbApps.DataSource = apps;
 
@@ -61,11 +62,12 @@ namespace QlikSenseLoopandReduce
 
         private void readStreams()
         {
-            QRSWebClient qrsClient = new QRSWebClient(txtServer.Text + ":4242");
+            //QRSWebClient qrsClient = new QRSWebClient(txtServer.Text + ":4242");
+            QRSNTLMWebClient qrsClient = new QRSNTLMWebClient(txtServer.Text);
             string result = qrsClient.Get("/qrs/stream");
 
-            List<QlikSenseStream> streams = new List<QlikSenseStream>();
-            streams = JsonConvert.DeserializeObject<List<QlikSenseStream>>(result);
+            List<stream> streams = new List<stream>();
+            streams = JsonConvert.DeserializeObject<List<stream>>(result);
 
             cmbStreams.DataSource = streams;
 
@@ -92,7 +94,7 @@ namespace QlikSenseLoopandReduce
 
             QlikSenseJSONHelper helper = new QlikSenseJSONHelper(txtServer.Text);
 
-            List<IAppField> AppFields = helper.GetAppFields((QlikSenseApp)cmbApps.SelectedItem);
+            List<IAppField> AppFields = helper.GetAppFields((app)cmbApps.SelectedItem);
 
             cmbLoopField.DataSource = AppFields;
 
